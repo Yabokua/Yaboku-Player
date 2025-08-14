@@ -3,7 +3,14 @@
 #include "texture_loader.h"
 #include "stb_image.h"
 
+#ifdef _WIN32
 #include <GL/gl.h>
+#elif __APPLE__
+#include <OpenGL/gl.h>
+#else
+#include <GL/gl.h>
+#endif
+
 #include <iostream>
 #include <taglib/fileref.h>
 #include <taglib/tag.h>

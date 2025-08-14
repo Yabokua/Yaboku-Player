@@ -22,8 +22,13 @@
 
 namespace fs = std::filesystem;
 
+#ifdef __APPLE__
+const char* glsl_version = "#version 150";
+#else
+const char* glsl_version = "#version 130";
+#endif
+
 static int selectedPlaylistUIIndex = -1;
-static const char* glsl_version = "#version 130";
 static std::string coverPath = (fs::path(PROJECT_ROOT_DIR) / "resources" / "unknown.png").string();
 
 ImFont* handwrittenFont = nullptr;
@@ -152,19 +157,19 @@ void initWindow() {
         exit(1);
     }
 
+    // Настройки OpenGL
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
-    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 0);
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
+    glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 
-    // Настройки для разных ОС
+#ifdef __APPLE__
+    glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE); // обязательно для macOS
+    glfwWindowHint(GLFW_COCOA_RETINA_FRAMEBUFFER, GLFW_TRUE);
+#endif
+
 #ifdef __linux__
     glfwWindowHintString(GLFW_X11_CLASS_NAME, "YabokuPlayer");
     glfwWindowHintString(GLFW_X11_INSTANCE_NAME, "yaboku_player");
-#elif defined(__APPLE__)
-    // macOS специфичные настройки
-    glfwWindowHint(GLFW_COCOA_RETINA_FRAMEBUFFER, GLFW_TRUE);
-#elif defined(_WIN32)
-    // Windows специфичные настройки (если нужны)
-    // glfwWindowHint(GLFW_WIN32_KEYBOARD_MENU, GLFW_FALSE);
 #endif
 
     window = glfwCreateWindow(900, 600, "Yaboku Player", nullptr, nullptr);
@@ -181,17 +186,16 @@ void initWindow() {
 
     loadWindowIcon();
 
+    // ImGui
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
     ImGuiIO& io = ImGui::GetIO(); (void)io;
-
     ImGui::StyleColorsDark();
     ImGui_ImplGlfw_InitForOpenGL(window, true);
-    
     ImGui_ImplOpenGL3_Init(glsl_version);
 
+    // Загрузка шрифтов
     std::vector<fs::path> fontBasePaths;
-    
 #ifdef _WIN32
     fontBasePaths = {
         fs::path(PROJECT_ROOT_DIR) / "resources" / "fonts",
@@ -215,7 +219,6 @@ void initWindow() {
 
     fs::path fontPath;
     bool fontPathFound = false;
-    
     for (const auto& path : fontBasePaths) {
         if (fs::exists(path)) {
             fontPath = path;
@@ -224,58 +227,35 @@ void initWindow() {
             break;
         }
     }
-    
     if (!fontPathFound) {
-        std::cerr << "Fonts directory not found in any of the expected locations" << std::endl;
+        std::cerr << "Fonts directory not found, using default path: " << fontBasePaths[0] << std::endl;
         fontPath = fontBasePaths[0];
     }
 
-    // Load main font
+    // Main font
     fs::path mainFontPath = fontPath / "Oswald-VariableFont_wght.ttf";
     ImFont* font = nullptr;
     if (fs::exists(mainFontPath)) {
-        font = io.Fonts->AddFontFromFileTTF(
-            mainFontPath.string().c_str(),
-            24.0f, nullptr,
-            io.Fonts->GetGlyphRangesCyrillic()
-        );
+        font = io.Fonts->AddFontFromFileTTF(mainFontPath.string().c_str(), 24.0f, nullptr, io.Fonts->GetGlyphRangesCyrillic());
         std::cout << "Main font loaded successfully" << std::endl;
-    } else {
-        std::cerr << "Font file not found: " << mainFontPath << std::endl;
     }
 
-    // Load handwritten font
+    // Handwritten font
     fs::path handwrittenFontPath = fontPath / "PlaywriteAUQLD-VariableFont_wght.ttf";
     if (fs::exists(handwrittenFontPath)) {
-        handwrittenFont = io.Fonts->AddFontFromFileTTF(
-            handwrittenFontPath.string().c_str(),
-            36.0f, nullptr,
-            io.Fonts->GetGlyphRangesCyrillic()
-        );
+        handwrittenFont = io.Fonts->AddFontFromFileTTF(handwrittenFontPath.string().c_str(), 36.0f, nullptr, io.Fonts->GetGlyphRangesCyrillic());
         std::cout << "Handwritten font loaded successfully" << std::endl;
-    } else {
-        std::cerr << "Font file not found: " << handwrittenFontPath << std::endl;
     }
 
-    // Load Yaboku font
+    // Yaboku font
     fs::path yabokuFontPath = fontPath / "FleurDeLeah-Regular.ttf";
     if (fs::exists(yabokuFontPath)) {
-        handwrittenFontYaboku = io.Fonts->AddFontFromFileTTF(
-            yabokuFontPath.string().c_str(),
-            40.0f, nullptr,
-            io.Fonts->GetGlyphRangesCyrillic()
-        );
+        handwrittenFontYaboku = io.Fonts->AddFontFromFileTTF(yabokuFontPath.string().c_str(), 40.0f, nullptr, io.Fonts->GetGlyphRangesCyrillic());
         std::cout << "Yaboku font loaded successfully" << std::endl;
-    } else {
-        std::cerr << "Font file not found: " << yabokuFontPath << std::endl;
     }
 
-    // Check if any font failed to load
     if (!font || !handwrittenFont || !handwrittenFontYaboku) {
         std::cerr << "Failed to load one or more fonts" << std::endl;
-        std::cerr << "Main font: " << (font ? "OK" : "FAILED") << std::endl;
-        std::cerr << "Handwritten font: " << (handwrittenFont ? "OK" : "FAILED") << std::endl;
-        std::cerr << "Yaboku font: " << (handwrittenFontYaboku ? "OK" : "FAILED") << std::endl;
     }
 }
 

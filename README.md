@@ -91,7 +91,10 @@ git clone --recursive https://github.com/yourusername/YabokuPlayer.git
 cd YabokuPlayer
 
 # Installing dependencies
-brew install cmake pkg-config portaudio python
+brew install cmake pkg-config portaudio python taglib ffmpeg
+
+if "command not found: brew", install Homebrew:
+/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
 
 # Building
 mkdir build && cd build

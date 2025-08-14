@@ -5,7 +5,7 @@ add_definitions(-DPROJECT_ROOT_DIR="${CMAKE_SOURCE_DIR}")
 
 set(CMAKE_CXX_STANDARD 17)
 
-# Определяем ОС
+# ОС
 if(WIN32)
     set(OS_WINDOWS TRUE)
 elseif(APPLE)
@@ -16,36 +16,49 @@ endif()
 
 add_subdirectory(external/glfw)
 
-# Найти необходимые пакеты
+# try to find system lib, if not found - use built-in ones
 if(NOT WIN32)
     find_package(PkgConfig REQUIRED)
     # PortAudio
-    pkg_check_modules(PORTAUDIO REQUIRED portaudio-2.0)
+    pkg_check_modules(PORTAUDIO REQUIRED portaudio-2.0 portaudio)
+    
     # TagLib
-    find_path(TAGLIB_INCLUDE_DIR tag.h PATH_SUFFIXES taglib)
-    find_library(TAGLIB_LIBRARY tag)
-    if(NOT TAGLIB_INCLUDE_DIR OR NOT TAGLIB_LIBRARY)
-        message(FATAL_ERROR "Taglib не найден.")
+    pkg_check_modules(TAGLIB taglib)
+    if(NOT TAGLIB_FOUND)
+        message(STATUS "System TagLib not found, using bundled version")
+        add_subdirectory(external/taglib)
+        set(TAGLIB_LIBRARIES tag)
+        set(TAGLIB_INCLUDE_DIRS ${CMAKE_SOURCE_DIR}/external/taglib ${CMAKE_SOURCE_DIR}/external/taglib/taglib)
+    else()
+        message(STATUS "Using system TagLib")
+        set(TAGLIB_LIBRARIES ${TAGLIB_LIBRARIES})
+        set(TAGLIB_INCLUDE_DIRS ${TAGLIB_INCLUDE_DIRS})
     endif()
 else()
-    # Для Windows - предполагаем, что библиотеки установлены через vcpkg или подобное
-    find_package(PkgConfig)
-    if(PkgConfig_FOUND)
-        pkg_check_modules(PORTAUDIO portaudio-2.0)
-        pkg_check_modules(TAGLIB taglib)
+    # PortAudio for Windows
+    find_library(PORTAUDIO_LIBRARIES NAMES portaudio_static portaudio)
+    find_path(PORTAUDIO_INCLUDE_DIRS portaudio.h)
+
+    if(NOT PORTAUDIO_LIBRARIES)
+        message(FATAL_ERROR "PortAudio not found on Windows. Please install it or place in external/portaudio")
     endif()
+
+    add_subdirectory(external/taglib)
+    set(TAGLIB_LIBRARIES tag)
+    set(TAGLIB_INCLUDE_DIRS ${CMAKE_SOURCE_DIR}/external/taglib ${CMAKE_SOURCE_DIR}/external/taglib/taglib)
 endif()
 
-# ImGui исходники
+# ImGui
 file(GLOB IMGUI_SRC
     external/imgui/*.cpp
     external/imgui/backends/imgui_impl_glfw.cpp
     external/imgui/backends/imgui_impl_opengl3.cpp
 )
 
+# tinyfiledialogs
 add_library(tinyfiledialogs STATIC external/tinyfiledialogs/tinyfiledialogs.c)
 
-# Создание ресурсного файла для Windows
+# Create recursive for Windows
 if(OS_WINDOWS)
     configure_file(
         "${CMAKE_SOURCE_DIR}/resources/app.rc.in"
@@ -76,18 +89,21 @@ target_include_directories(yaboku_player PRIVATE
     external/glfw/include
     external/tinyfiledialogs
     external/json/include
-    ${TAGLIB_INCLUDE_DIR}
+    ${TAGLIB_INCLUDE_DIRS}
     ${PORTAUDIO_INCLUDE_DIRS}
 )
 
-# Линковка библиотек в зависимости от ОС
+# link lib on ОС
 if(OS_WINDOWS)
     target_link_libraries(yaboku_player PRIVATE
         glfw
         opengl32
         tinyfiledialogs
-        # Добавьте пути к Windows библиотекам
-        # portaudio taglib curl
+        ${PORTAUDIO_LIBRARIES}
+        ${TAGLIB_LIBRARIES}
+        ws2_32
+        winmm
+        curl    
     )
 elseif(OS_MACOS)
     target_link_libraries(yaboku_player PRIVATE
@@ -98,7 +114,7 @@ elseif(OS_MACOS)
         "-framework CoreVideo"
         tinyfiledialogs
         curl
-        ${TAGLIB_LIBRARY}
+        ${TAGLIB_LIBRARIES}
         ${PORTAUDIO_LIBRARIES}
     )
 else() # Linux
@@ -110,21 +126,26 @@ else() # Linux
         Xinerama
         tinyfiledialogs
         curl
-        ${TAGLIB_LIBRARY}
+        ${TAGLIB_LIBRARIES}
         ${PORTAUDIO_LIBRARIES}
     )
 endif()
 
-# Компилятор флаги для PortAudio
+# Compile flags for PortAudio
 if(PORTAUDIO_FOUND)
     target_compile_options(yaboku_player PRIVATE ${PORTAUDIO_CFLAGS_OTHER})
 endif()
 
-# Установка в зависимости от ОС
+# Clonpile flag for old version 
+if(TAGLIB_FOUND)
+    target_compile_options(yaboku_player PRIVATE ${TAGLIB_CFLAGS_OTHER})
+endif()
+
+# INSTALL
 if(OS_LINUX)
     install(TARGETS yaboku_player DESTINATION bin)
     
-    # Установка .desktop файла
+    # .desktop
     configure_file(
         "${CMAKE_SOURCE_DIR}/resources/yaboku_player.desktop.in"
         "${CMAKE_BINARY_DIR}/yaboku_player.desktop"
@@ -133,7 +154,7 @@ if(OS_LINUX)
     install(FILES "${CMAKE_BINARY_DIR}/yaboku_player.desktop"
             DESTINATION share/applications)
     
-    # Установка иконок
+    # Icons
     install(FILES "${CMAKE_SOURCE_DIR}/resources/icons/icon.png"
             DESTINATION share/pixmaps
             RENAME yaboku_player.png)
@@ -142,7 +163,7 @@ if(OS_LINUX)
             RENAME yaboku_player.png)
 
 elseif(OS_MACOS)
-    # Создание .app bundle для macOS
+    # create .app bundle for macOS
     set_target_properties(yaboku_player PROPERTIES
         MACOSX_BUNDLE TRUE
         MACOSX_BUNDLE_BUNDLE_NAME "Yaboku Player"
@@ -152,17 +173,14 @@ elseif(OS_MACOS)
         MACOSX_BUNDLE_ICON_FILE "icon.icns"
     )
     
-    # Копирование иконки в bundle
+    # Copy icons in bundle
     set(ICON_FILE "${CMAKE_SOURCE_DIR}/resources/icons/icon.icns")
     set_source_files_properties(${ICON_FILE} PROPERTIES
         MACOSX_PACKAGE_LOCATION "Resources")
     target_sources(yaboku_player PRIVATE ${ICON_FILE})
 
 elseif(OS_WINDOWS)
-    # Для Windows иконка уже включена через .rc файл
     install(TARGETS yaboku_player DESTINATION .)
-    
-    # Копирование ресурсов
     install(DIRECTORY "${CMAKE_SOURCE_DIR}/resources/"
             DESTINATION resources)
 endif()
