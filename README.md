@@ -36,7 +36,7 @@ Require for install:
 ### Linux
 ```bash
 # Cloning the repository
-git clone --recursive <GitHub link>
+git clone --recursive https://github.com/Yabokua/Yaboku-Player
 cd YabokuPlayer
 
 # Installing dependencies
