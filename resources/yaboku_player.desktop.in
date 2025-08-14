@@ -1,0 +1,11 @@
+[Desktop Entry]
+Name=Yaboku Player
+Comment=Music Player
+Exec=/usr/local/bin/yaboku_player
+Icon=yaboku_player
+Terminal=false
+Type=Application
+Categories=AudioVideo;Audio;Player;
+StartupNotify=true
+MimeType=audio/mpeg;audio/mp3;audio/wav;audio/flac;audio/ogg;
+
