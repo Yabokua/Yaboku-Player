@@ -21,7 +21,7 @@ Require for install:
 - **CMake** (>= 3.10)
 - **Compiler with C++17 support** (GCC, Clang or MSVC)
 - **PortAudio** (`portaudio-2.0`)
-- **Python 3** (to get lyrics in `scripts/`)
+- **Python 3** (to get lyrics in `scripts/`, `need requests and beautifulsoup4 lib for python`)
 - **pkg-config**
 - **GLFW** (part of `external/glfw`)
 - **Dear ImGui** (part of `external/imgui`)
@@ -36,7 +36,7 @@ Require for install:
 ### Linux
 ```bash
 # Cloning the repository
-git clone --recursive https://github.com/Yabokua/Yaboku-Player
+git clone --recursive https://github.com/Yabokua/Yaboku-Player.git
 cd YabokuPlayer
 
 # Installing dependencies
@@ -66,7 +66,7 @@ yaboku_player
 
 ### Windows (MinGW or MSVC)
 
-1. Install **CMake**, **PortAudio**, **Python 3**.
+1. Install **CMake**, **PortAudio**, **Python 3**, **taglib**, **libcurl**, **vcpkg**.
 2. In the terminal:
 ```powershell
 git clone --recursive https://github.com/yourusername/YabokuPlayer.git
@@ -87,7 +87,8 @@ Open `.sln` in Visual Studio and build the project.
 ### macOS
 ```bash
 # Cloning
-git clone --recursive https://github.com/yourusername/YabokuPlayer.git
+git clone --recursive https://github.com/Yabokua/Yaboku-Player.git
+cd YabokuPlayer
 cd YabokuPlayer
 
 # Installing dependencies
